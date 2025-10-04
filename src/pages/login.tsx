@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 interface LoginProps {
   logo?: string;
@@ -11,6 +11,66 @@ const Login: React.FC<LoginProps> = ({
   ilustracion,
   nombreClinica = "Clínica Salud Integral",
 }) => {
+  const [formValues, setFormValues] = useState({ usuario: "", contrasena: "" });
+  const [errors, setErrors] = useState({ usuario: "", contrasena: "" });
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+  
+    const trimmedValues = {
+      usuario: formValues.usuario.trim(),
+      contrasena: formValues.contrasena.trim(),
+    };
+  
+    const nextErrors = {
+      usuario: trimmedValues.usuario ? "" : "El usuario es obligatorio.",
+      contrasena: trimmedValues.contrasena ? "" : "La contraseña es obligatoria.",
+    };
+  
+    setErrors(nextErrors);
+  
+    if (nextErrors.usuario || nextErrors.contrasena) {
+      return;
+    }
+  
+    try {
+      const response = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(trimmedValues),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        alert(errorData.message || "Error al iniciar sesión");
+        return;
+      }
+  
+      const data = await response.json();
+      alert("Bienvenido " + data.usuario.nombre);
+  
+      // Redirigir según el nivel
+      if (data.usuario.nivel === "admin") {
+        window.location.href = "/dashboard-admin";
+      } else {
+        window.location.href = "/inicio";
+      }
+  
+    } catch (error) {
+      alert("Error de conexión con el servidor");
+      console.error(error);
+    }
+  };
+  
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    if (errors[name as keyof typeof errors]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+    setFormValues((prev) => ({ ...prev, [name]: value }));
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-200 px-4 relative">
       <div className="max-w-5xl w-full bg-white shadow-lg rounded-xl grid grid-cols-1 md:grid-cols-2 overflow-hidden">
@@ -49,7 +109,7 @@ const Login: React.FC<LoginProps> = ({
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center md:text-left">
             Iniciar sesión
           </h2>
-          <form className="space-y-4">
+          <form className="space-y-4" onSubmit={handleSubmit} noValidate>
             <div>
               <label
                 htmlFor="usuario"
@@ -61,9 +121,19 @@ const Login: React.FC<LoginProps> = ({
                 type="text"
                 id="usuario"
                 name="usuario"
+                value={formValues.usuario}
+                onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Escribe tu usuario o correo"
+                autoComplete="username"
+                aria-invalid={!!errors.usuario}
+                aria-describedby={errors.usuario ? "usuario-error" : undefined}
               />
+              {errors.usuario && (
+                <p id="usuario-error" className="mt-1 text-sm text-red-600">
+                  {errors.usuario}
+                </p>
+              )}
             </div>
             <div>
               <label
@@ -76,9 +146,19 @@ const Login: React.FC<LoginProps> = ({
                 type="password"
                 id="contrasena"
                 name="contrasena"
+                value={formValues.contrasena}
+                onChange={handleChange}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="••••••••••"
+                autoComplete="current-password"
+                aria-invalid={!!errors.contrasena}
+                aria-describedby={errors.contrasena ? "contrasena-error" : undefined}
               />
+              {errors.contrasena && (
+                <p id="contrasena-error" className="mt-1 text-sm text-red-600">
+                  {errors.contrasena}
+                </p>
+              )}
             </div>
             <button
               type="submit"
